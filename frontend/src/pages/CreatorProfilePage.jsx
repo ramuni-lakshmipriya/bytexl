@@ -185,17 +185,29 @@ export function CreatorProfilePage() {
           
           {/* AI Tools Stack */}
           <div>
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Cpu className="w-4 h-4 text-indigo-600" />
-              Verified AI Tools ({creator.tools?.length || 0})
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Cpu className="w-4 h-4 text-indigo-600" />
+                Verified AI Tools ({creator.tools?.length || 0})
+              </h3>
+              <Link to="/tools" className="text-[11px] text-indigo-600 hover:underline font-semibold">
+                Explore 250+ Catalog →
+              </Link>
+            </div>
             <div className="flex flex-wrap gap-2">
               {creator.tools && creator.tools.length > 0 ? (
                 creator.tools.map(t => (
-                  <div key={t.id} className="px-3 py-1.5 rounded-xl bg-slate-100 text-indigo-700 border border-slate-200 text-xs font-medium flex items-center gap-2">
-                    <span>{t.name}</span>
-                    <span className="text-[10px] text-slate-400 uppercase">({t.category})</span>
-                  </div>
+                  <Link
+                    key={t.id || t.name}
+                    to={`/tools?search=${encodeURIComponent(t.name)}`}
+                    className="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-indigo-50 text-indigo-700 border border-slate-200 hover:border-indigo-200 text-xs font-medium flex items-center gap-2 transition-all group"
+                    title={`Inspect ${t.name} commercial clearance and categories in the directory`}
+                  >
+                    <span className="font-semibold">{t.name}</span>
+                    <span className="text-[10px] text-slate-400 group-hover:text-indigo-600 uppercase">
+                      ({t.category_name || t.category})
+                    </span>
+                  </Link>
                 ))
               ) : (
                 <span className="text-xs text-slate-400 italic">No tools listed</span>
@@ -212,9 +224,14 @@ export function CreatorProfilePage() {
             <div className="flex flex-wrap gap-2">
               {creator.skills && creator.skills.length > 0 ? (
                 creator.skills.map(s => (
-                  <span key={s.id} className="px-3 py-1.5 rounded-xl bg-slate-100 text-purple-700 border border-slate-200 text-xs font-medium">
+                  <Link
+                    key={s.id || s.name}
+                    to={`/creators?skills=${encodeURIComponent(s.name)}`}
+                    className="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-purple-50 text-purple-700 border border-slate-200 hover:border-purple-200 text-xs font-medium transition-all"
+                    title={`Find other creators with ${s.name}`}
+                  >
                     {s.name}
-                  </span>
+                  </Link>
                 ))
               ) : (
                 <span className="text-xs text-slate-400 italic">No skills listed</span>

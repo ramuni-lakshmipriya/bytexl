@@ -11,6 +11,7 @@ import { CreatorProfilePage } from './pages/CreatorProfilePage';
 import { BriefsPage } from './pages/BriefsPage';
 import { BriefDetailPage } from './pages/BriefDetailPage';
 import { NewBriefPage } from './pages/NewBriefPage';
+import { AIToolsDirectoryPage } from './pages/AIToolsDirectoryPage';
 
 import { LoginChooserPage } from './pages/LoginChooserPage';
 import { CreatorAuthPage } from './pages/CreatorAuthPage';
@@ -32,6 +33,7 @@ export default function App() {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/creators" element={<CreatorsPage />} />
                 <Route path="/creators/:id" element={<CreatorProfilePage />} />
+                <Route path="/tools" element={<AIToolsDirectoryPage />} />
                 <Route path="/briefs" element={<BriefsPage />} />
                 <Route path="/briefs/:id" element={<BriefDetailPage />} />
 
@@ -49,6 +51,11 @@ export default function App() {
                   </RoleRoute>
                 } />
                 <Route path="/creator/complete-profile" element={
+                  <RoleRoute role="creator">
+                    <CompleteProfilePage />
+                  </RoleRoute>
+                } />
+                <Route path="/creator/onboarding" element={
                   <RoleRoute role="creator">
                     <CompleteProfilePage />
                   </RoleRoute>

@@ -1,38 +1,41 @@
 # GenCraft - AI Content Creator Marketplace 🚀
 
-An end-to-end hackathon platform connecting generative AI creators (AI filmmakers, animators, prompt engineers, 3D generative artists) with brands and creative agencies.
+An end-to-end AI-native marketplace connecting generative AI creators (AI filmmakers, animators, prompt engineers, 3D generative artists) with brands and creative agencies. Built for byteXL HacXLerate 2026, Challenge 2 by Kampus.VC.
 
 ---
 
-## ⚡ Recent Progress & Implementation Highlights
+## ⚡ Feature Implementation Highlights
 
-### 1. **Evaluator Demo Access & 1-Click Persona Switcher**
-- **Persistent Top Evaluator Bar**: When logged in as a demo user (`demo.creator@gencraft.demo` or `demo.brand@gencraft.demo`), a persistent top bar allows instant 1-click toggling between **Demo Creator** and **Demo Brand** without logging out or re-entering credentials.
-- **Navbar 1-Click Dropdown**: Animated `⚡ 1-Click Demo Login` dropdown in the top header with visual persona cards.
-- **Evaluator Hero Banner**: Prominent demo hero access banner on the `/login` chooser page.
-- **Auto-Fill Buttons**: Instant credential pre-fill on `/creator/login` and `/brand/login`.
+### 1. **Creator Onboarding & Profile Persistence (STEP 2)**
+- **Interactive Onboarding Portal**: `/creator/onboarding` collects display name, professional headline, specialization (AI Filmmaker, Animator, Generative Artist, AI Advertiser, Motion Designer, Prompt Engineer), core skills, AI tools stack, experience level, rate range (INR), availability, location, languages, portfolio links, and commercial buyout preferences.
+- **Backend Persistence**: Endpoint `PUT /creators/me` persists all onboarding fields to SQLite database with graceful demo fallback support.
 
-### 2. **Modern Light Theme Design System**
-- Modern, high-end light theme built with Tailwind CSS, custom glassmorphism (`glass-panel`), crisp slate borders (`border-slate-200`), subtle shadow layers, and curated indigo/purple color accents.
-- Modern typography using clean sans-serif layouts, responsive grid patterns, and interactive micro-animations.
-- Clean footer layout with all disclaimer banners removed.
+### 2. **Creator Starter Studio (STEP 3)**
+- **Personalized Project Suggestions**: 6 rule-based starter projects (Product Advertisement, Cinematic AI Microfilm, Animated Explainer, Social-Media Campaign, Generative Art Collection, Product Visualization) explaining why each fits creator skills/tools.
+- **Production Guidance**: Includes aspect ratios, target duration, deliverables list, prompt-to-video workflow pipelines, and 5-step milestone checklists.
+- **Progress Tracking & 1-Click Publishing**: Creators can save project ideas, track status (`not_started` ➔ `in_progress` ➔ `completed`), and launch 1-click portfolio publishing drawers.
 
-### 3. **Dual-Role Real Authentication (Creator & Brand)**
-- **Role Isolation**: Separate signup and login portals (`/creator/login`, `/creator/signup`, `/brand/login`, `/brand/signup`).
-- **Password Security**: Passwords hashed with `bcrypt` (via `passlib`). Generic login error messages prevent account enumeration.
-- **Session Security**: JWT tokens stored in `httpOnly`, `SameSite=Lax` cookies (`gencraft_session`).
-- **Role Enforcement**: Protected routes (`ProtectedRoute`, `RoleRoute`) enforce Brand-only brief creation (`POST /briefs`), brief ownership edits, and role-specific dashboard displays.
-- **Social Login (Google, Facebook, Instagram)**: CSRF-protected OAuth state parameter preserves selected role across auth callbacks. Disables unconfigured provider buttons gracefully with tooltips.
+### 3. **AI Portfolio Profiles & Full CRUD Management (STEP 4)**
+- **Rich Portfolio Cards & Viewer**: Showcases title, media format, aspect ratios (16:9, 9:16, 1:1, 4:5), duration, documented production workflows (e.g. `Midjourney v6 -> Runway Gen-3 -> DaVinci Resolve`), prompt notes, and commercial status (`cleared`, `pending`, `personal_only`).
+- **Creator Portfolio Management**: Endpoints (`POST /creators/me/portfolio`, `PUT /creators/me/portfolio/{id}`, `DELETE /creators/me/portfolio/{id}`) allow creators to add, edit, and delete portfolio items. Handles empty portfolios and missing thumbnails gracefully.
 
-### 4. **Creator Directory & AI Portfolio Modal Viewer**
-- **Multi-Select Search**: Filter creators by tools, skills, specialization, and availability with **Match Any** / **Match All** logic toggles.
-- **Verification Badges**: Interactive tooltips explaining verification signals ("Tools verified", "Workflow documented", "Past work linked").
-- **AI Portfolio Viewer**: Full modal showcasing multi-step generative AI workflows (e.g. `Midjourney v6 -> Runway Gen-3 -> DaVinci Resolve`), production timelines, tool badges, and commercial clearance status.
+### 4. **Brand Brief Builder & AI Assistant (STEP 5)**
+- **Structured Campaign Engine**: Collects campaign goals, content format, visual style, aspect ratios, duration, budget bounds (INR), deadline, required tools, usage region, and commercial buyout terms.
+- **Gemini LLM Brief Builder**: `POST /briefs/draft` converts unstructured natural language campaign prompts into structured editable brief fields using Google Gemini REST API with deterministic rule-based fallback.
 
-### 5. **Campaign Briefs & Automated Match Scoring**
-- **Structured Brief Engine**: Support for campaign budgets (INR), aspect ratios (16:9, 9:16, 1:1), duration, deliverables, and skill/tool tags.
-- **Gemini LLM Brief Builder**: `POST /briefs/draft` parses unstructured natural language prompts into structured brief fields using Google Gemini AI REST API with rule-based fallback.
-- **6-Factor Match Engine**: `GET /briefs/{id}/matches` scores creators (0–100) based on weighted tool overlap (25%), skill fit (25%), budget alignment (15%), format compatibility (15%), availability (10%), and verification credentials (10%).
+### 5. **Creator Search, Combined Filtering & Explainable Matching (STEP 6)**
+- **Multi-Select Filter Engine**: Search by skills, specialization, tools/models, content format, experience level, availability, rate compatibility, and verified status.
+- **Explainable Match Scoring**: 6-Factor weighted algorithm (0–100%) breaking down tool match (30%), skill match (30%), content format (15%), budget alignment (15%), availability (5%), and verification signals (5%).
+- **Demonstrable No-Match Test Case**: Built-in `🧪 No-Match Test Case` button in `/creators` directory to test empty-result states, loading indicators, and 1-click filter resets.
+
+### 6. **Verification & Trust System (STEP 7)**
+- **Honest Verification Badges**: Distinct status labels for Self-reported tool usage, Workflow documented, Past work linked, Evidence reviewed, and Commercial rights confirmed.
+
+### 7. **Engagement Workflow & Delivery Management (STEP 8)**
+- **End-to-End Application Pipeline**: Creators apply to briefs with pitch proposals, rate quotes, and delivery timelines (`POST /briefs/{id}/apply`).
+- **Brand Applicant Review**: Brands shortlist, accept, or reject creators (`PUT /briefs/applications/{id}`).
+- **Delivery Submission & Revision Requests**: Creators submit final delivery URLs and notes (`POST /briefs/applications/{id}/deliver`). Brands can request revisions or approve work.
+- **Simulated Escrow Payment**: Status badges track `escrow_pending` ➔ `escrow_held` ➔ `payment_released`.
 
 ---
 
@@ -67,48 +70,16 @@ graph TD
 
 ---
 
-## 🛠️ Developer OAuth & Environment Setup
-
-To enable Google, Facebook, or Instagram social logins, configure developer app credentials in `.env`:
-
-```env
-# Server Config
-FRONTEND_URL=http://localhost:3000
-
-# Google OAuth
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-
-# Facebook OAuth
-FACEBOOK_APP_ID=your_facebook_app_id
-FACEBOOK_APP_SECRET=your_facebook_app_secret
-
-# Instagram OAuth
-INSTAGRAM_APP_ID=your_instagram_app_id
-INSTAGRAM_APP_SECRET=your_instagram_app_secret
-
-# Gemini AI Key (Optional - Rule-based fallback active)
-GEMINI_API_KEY=your_gemini_api_key
-```
-
-### Callback URLs Summary
-- **Backend Base**: `http://localhost:8000`
-- **Google Callback**: `http://localhost:8000/auth/google/callback`
-- **Facebook Callback**: `http://localhost:8000/auth/facebook/callback`
-- **Instagram Callback**: `http://localhost:8000/auth/instagram/callback`
-
----
-
-## 📊 Data Model & Database Seed
+## 📊 Data Model & Database Tables
 
 The SQLite database (`dataset/marketplace.db`) is auto-seeded on backend startup (`ensure_db()`):
-- **`users` (33)**: Account records storing email, bcrypt `password_hash`, role (`creator` / `brand`), linked `creator_id` / `brand_id`, display name, and avatar.
-- **`oauth_accounts`**: Linked OAuth accounts mapping `provider`, `provider_user_id`, and `email`.
-- **`creators` (26)**: Creator profile data, rate ranges (INR), location, verification signals.
-- **`brands` (7)**: Brand/Agency profiles.
-- **`briefs` (10)**: Campaign briefs with target formats, budget bounds, and required tools/skills.
-- **`portfolio_items` (103)**: Portfolio video/art pieces with workflow documentation.
-- **`tools` (18)** & **`skills` (20)**: Reference master data.
+- **`users`**: User login accounts, bcrypt `password_hash`, role (`creator` / `brand`), linked `creator_id` / `brand_id`.
+- **`creators`**: Creator profile data, rate bounds, specialization, location, availability, verification flags.
+- **`portfolio_items`**: Portfolio works with media URLs, aspect ratios, production workflows, and tool references.
+- **`briefs`**: Brand campaign briefs with format requirements, required tools/skills, budget bounds.
+- **`brief_applications`**: Applications, pitch proposals, status (`applied`, `shortlisted`, `accepted`, `delivered`, `completed`), delivery URLs, revision notes, and simulated payment escrow statuses.
+- **`starter_studio_projects`**: Saved starter studio project ideas and progress tracking.
+- **`tools` & `skills`**: 250+ AI tools across 18 categories and 20 core skills.
 
 ---
 
@@ -125,18 +96,19 @@ python run.py
 ```bash
 cd frontend && npm run build
 ```
-*(Verified: Built cleanly in 535ms with 0 errors)*
+*(Verified: Built cleanly in 715ms with 0 errors)*
 
 ### 3. Backend Test Suite
 ```bash
 python -m pytest backend/tests
 ```
-*(Verified: 14 out of 14 unit and integration tests passing clean)*
+*(Verified: 19 out of 19 unit and integration tests passing clean)*
 
 ---
 
 ## ⚠️ Known Limitations & Evaluation Notes
 
-1. **Meta OAuth Test Mode**: Instagram and Facebook login APIs are limited by Meta to developer accounts/added test users prior to App Review. Attempting login with non-tester Meta accounts displays a user-friendly notice directing evaluators to use email or Google login.
-2. **Synthetic Portfolio Content**: Portfolio video samples and brand profiles use curated high quality synthetic demonstration media.
+1. **Meta OAuth Test Mode**: Instagram and Facebook login APIs are limited by Meta to developer accounts/added test users prior to App Review. Evaluators can use email login or Google OAuth.
+2. **Simulated Payments**: Payment escrow and release steps display clear `(Simulated)` labels to indicate no live credit card or banking APIs are charged.
+
 

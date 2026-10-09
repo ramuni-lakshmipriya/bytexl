@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Sparkles, Zap, CheckCircle2, AlertCircle, Loader2, Send } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Sparkles, Zap, CheckCircle2, AlertCircle, Loader2, Send, Search, X } from 'lucide-react';
 import { fetchMeta, createBrief, draftBriefAI } from '../api';
+import { TOOL_CATEGORIES } from '../data/aiToolsData';
 
 export function NewBriefPage() {
   const navigate = useNavigate();
@@ -11,6 +12,10 @@ export function NewBriefPage() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMessage, setAiMessage] = useState(null);
+
+  // Tool filtering in brief form
+  const [toolSearch, setToolSearch] = useState('');
+  const [toolCategory, setToolCategory] = useState('all');
 
   // Form State
   const [form, setForm] = useState({
@@ -46,6 +51,19 @@ export function NewBriefPage() {
       })
       .catch(err => console.error('Failed to fetch meta:', err));
   }, []);
+
+  const filteredTools = useMemo(() => {
+    const list = meta?.tools || [];
+    return list.filter(t => {
+      const matchCat = toolCategory === 'all' ||
+        (t.category_name && t.category_name.toLowerCase().includes(toolCategory.toLowerCase())) ||
+        (t.category && t.category.toLowerCase() === toolCategory.toLowerCase());
+      const matchSearch = !toolSearch ||
+        t.name.toLowerCase().includes(toolSearch.toLowerCase()) ||
+        (t.category_name && t.category_name.toLowerCase().includes(toolSearch.toLowerCase()));
+      return matchCat && matchSearch;
+    });
+  }, [meta?.tools, toolCategory, toolSearch]);
 
   // Handle AI Draft Request
   const handleGenerateAI = async () => {
@@ -402,21 +420,81 @@ export function NewBriefPage() {
 
         {/* Required Tools Checkboxes */}
         <div>
-          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
-            Required AI Tools
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              Required AI Tools ({form.required_tool_ids.length} selected)
+            </label>
+            {form.required_tool_ids.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setForm(prev => ({ ...prev, required_tool_ids: [] }))}
+                className="text-[11px] text-indigo-600 hover:underline font-semibold"
+              >
+                Clear Tools
+              </button>
+            )}
+          </div>
+
+          {/* Quick Search & Category Dropdown */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2.5">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={toolSearch}
+                onChange={(e) => setToolSearch(e.target.value)}
+                placeholder="Search tools (e.g. Runway, Midjourney, Kling)..."
+                className="w-full pl-8 pr-6 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 text-slate-800"
+              />
+              {toolSearch && (
+                <button
+                  type="button"
+                  onClick={() => setToolSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            <select
+              value={toolCategory}
+              onChange={(e) => setToolCategory(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 p-1.5 focus:outline-none focus:border-indigo-500"
+            >
+              <option value="all">All 18 Categories ({meta?.tools?.length || 250}+ tools)</option>
+              {TOOL_CATEGORIES.map(c => (
+                <option key={c.id} value={c.name}>
+                  {c.emoji} {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-48 overflow-y-auto p-3 bg-slate-50 rounded-xl border border-slate-200 custom-scrollbar">
-            {meta?.tools?.map(t => (
-              <label key={t.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-900">
-                <input
-                  type="checkbox"
-                  checked={form.required_tool_ids.includes(t.id)}
-                  onChange={() => toggleTool(t.id)}
-                  className="rounded border-slate-300 bg-white text-indigo-600 focus:ring-indigo-500"
-                />
-                <span>{t.name}</span>
-              </label>
-            ))}
+            {filteredTools.length === 0 ? (
+              <p className="col-span-full text-xs text-slate-400 py-2 text-center">
+                No tools match "{toolSearch}"
+              </p>
+            ) : (
+              filteredTools.map(t => (
+                <label key={t.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer hover:text-slate-900 group">
+                  <input
+                    type="checkbox"
+                    checked={form.required_tool_ids.includes(t.id)}
+                    onChange={() => toggleTool(t.id)}
+                    className="rounded border-slate-300 bg-white text-indigo-600 focus:ring-indigo-500 shrink-0"
+                  />
+                  <span className="truncate">{t.name}</span>
+                </label>
+              ))
+            )}
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1">
+            <span>Showing {filteredTools.length} of {meta?.tools?.length || 0} tools</span>
+            <Link to="/tools" target="_blank" className="text-indigo-600 hover:underline font-medium">
+              View Tool Catalog ↗
+            </Link>
           </div>
         </div>
 

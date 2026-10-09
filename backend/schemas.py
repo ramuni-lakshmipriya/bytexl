@@ -6,8 +6,11 @@ class Tool(BaseModel):
     id: int
     name: str
     category: str
+    category_name: Optional[str] = None
     commercial_use: str
     url: Optional[str] = None
+    description: Optional[str] = None
+    popular_archetype: Optional[str] = None
 
 class Skill(BaseModel):
     id: int
@@ -16,6 +19,28 @@ class Skill(BaseModel):
 class ContentType(BaseModel):
     id: int
     name: str
+
+class ToolCategory(BaseModel):
+    id: str
+    name: str
+    emoji: str
+    count: int
+    archetype: Optional[str] = None
+
+class CreatorArchetype(BaseModel):
+    id: str
+    name: str
+    role: str
+    icon: str
+    description: str
+    key_tools: List[str]
+    suggested_skills: List[str]
+
+class MarketplaceSource(BaseModel):
+    name: str
+    url: str
+    description: str
+    badge: str
 
 class Brand(BaseModel):
     id: str
@@ -32,6 +57,9 @@ class MetaResponse(BaseModel):
     specializations: List[str]
     aspect_ratios: List[str]
     commercial_use_options: List[str]
+    tool_categories: Optional[List[ToolCategory]] = []
+    creator_archetypes: Optional[List[CreatorArchetype]] = []
+    marketplace_sources: Optional[List[MarketplaceSource]] = []
 
 # --- Portfolio Models ---
 class PortfolioItem(BaseModel):
@@ -193,16 +221,100 @@ class BrandSignupRequest(BaseModel):
     accept_terms: bool
 
 class CreatorProfileUpdate(BaseModel):
+    name: Optional[str] = None
     headline: Optional[str] = None
     bio: Optional[str] = None
+    specialization: Optional[str] = None
+    experience_level: Optional[str] = None
+    availability: Optional[str] = None
     rate_min_inr: Optional[int] = None
     rate_max_inr: Optional[int] = None
-    availability: Optional[str] = None
+    location: Optional[str] = None
     languages: List[str] = []
-    skill_names: List[str] = []
-    content_type_names: List[str] = []
+    tools: List[str] = []
+    skills: List[str] = []
+    content_types: List[str] = []
+    portfolio_links: Optional[str] = None
+    commercial_preferences: Optional[str] = None
+
+class PortfolioItemCreate(BaseModel):
+    title: str = Field(..., min_length=2)
+    media_type: str = "video"
+    content_type_id: Optional[int] = None
+    media_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    duration_sec: Optional[int] = None
+    aspect_ratio: Optional[str] = "16:9"
+    workflow: Optional[str] = None
+    process_notes: Optional[str] = None
+    client_name: Optional[str] = None
+    commercial_use: str = "cleared"
+    year: Optional[int] = 2026
+    tool_ids: List[int] = []
+
+class PortfolioItemUpdate(BaseModel):
+    title: Optional[str] = None
+    media_type: Optional[str] = None
+    content_type_id: Optional[int] = None
+    media_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    duration_sec: Optional[int] = None
+    aspect_ratio: Optional[str] = None
+    workflow: Optional[str] = None
+    process_notes: Optional[str] = None
+    client_name: Optional[str] = None
+    commercial_use: Optional[str] = None
+    year: Optional[int] = None
+    tool_ids: Optional[List[int]] = None
+
+class BriefApplicationCreate(BaseModel):
+    pitch: str = Field(..., min_length=10)
+    proposed_rate_inr: int = Field(..., gt=0)
+    estimated_days: int = Field(..., gt=0)
+
+class BriefApplicationUpdate(BaseModel):
+    status: Optional[str] = Field(None, pattern="^(applied|shortlisted|accepted|in_progress|delivered|completed|revision_requested|rejected)$")
+    revision_feedback: Optional[str] = None
+
+class DeliverySubmit(BaseModel):
+    delivery_url: str = Field(..., min_length=5)
+    delivery_notes: Optional[str] = None
+
+class BriefApplicationOut(BaseModel):
+    id: str
+    brief_id: str
+    brief_title: Optional[str] = None
+    creator_id: str
+    creator_name: Optional[str] = None
+    creator_avatar: Optional[str] = None
+    creator_headline: Optional[str] = None
+    pitch: Optional[str] = None
+    proposed_rate_inr: Optional[int] = None
+    estimated_days: Optional[int] = None
+    status: str
+    delivery_url: Optional[str] = None
+    delivery_notes: Optional[str] = None
+    revision_feedback: Optional[str] = None
+    payment_status: str
+    created_at: str
+    updated_at: str
+
+class StarterStudioProjectCreate(BaseModel):
+    title: str
+    project_type: str
+    notes: Optional[str] = None
+
+class StarterStudioProjectOut(BaseModel):
+    id: str
+    creator_id: str
+    title: str
+    project_type: str
+    status: str
+    notes: Optional[str] = None
+    created_at: str
 
 class AuthConfigStatus(BaseModel):
     google_configured: bool
     facebook_configured: bool
     instagram_configured: bool
+

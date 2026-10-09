@@ -3,11 +3,14 @@ PRAGMA foreign_keys = ON;
 
 -- ---------- Reference data ----------
 CREATE TABLE tools (
-    id               INTEGER PRIMARY KEY,
-    name             TEXT NOT NULL UNIQUE,
-    category         TEXT NOT NULL,
-    commercial_use   TEXT NOT NULL CHECK (commercial_use IN ('yes','plan_dependent')),
-    url              TEXT
+    id                INTEGER PRIMARY KEY,
+    name              TEXT NOT NULL UNIQUE,
+    category          TEXT NOT NULL,
+    category_name     TEXT,
+    commercial_use    TEXT NOT NULL CHECK (commercial_use IN ('yes','plan_dependent')),
+    url               TEXT,
+    description       TEXT,
+    popular_archetype TEXT
 );
 
 CREATE TABLE skills (
@@ -159,4 +162,38 @@ CREATE INDEX idx_users_email            ON users(email);
 CREATE INDEX idx_users_creator          ON users(creator_id);
 CREATE INDEX idx_users_brand            ON users(brand_id);
 CREATE INDEX idx_oauth_user             ON oauth_accounts(user_id);
+
+-- ---------- Engagement Workflow (Brief Applications & Deliveries) ----------
+CREATE TABLE IF NOT EXISTS brief_applications (
+    id                 TEXT PRIMARY KEY,
+    brief_id           TEXT NOT NULL REFERENCES briefs(id) ON DELETE CASCADE,
+    creator_id         TEXT NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
+    pitch              TEXT,
+    proposed_rate_inr  INTEGER,
+    estimated_days     INTEGER,
+    status             TEXT NOT NULL DEFAULT 'applied' CHECK (status IN ('applied','shortlisted','accepted','in_progress','delivered','completed','revision_requested','rejected')),
+    delivery_url       TEXT,
+    delivery_notes     TEXT,
+    revision_feedback  TEXT,
+    payment_status     TEXT DEFAULT 'escrow_held' CHECK (payment_status IN ('escrow_pending','escrow_held','payment_released')),
+    created_at         TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(brief_id, creator_id)
+);
+
+-- ---------- Starter Studio Progress ----------
+CREATE TABLE IF NOT EXISTS starter_studio_projects (
+    id           TEXT PRIMARY KEY,
+    creator_id   TEXT NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
+    title        TEXT NOT NULL,
+    project_type TEXT NOT NULL,
+    status       TEXT NOT NULL DEFAULT 'in_progress' CHECK (status IN ('not_started','in_progress','completed')),
+    notes        TEXT,
+    created_at   TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_brief_apps_brief ON brief_applications(brief_id);
+CREATE INDEX IF NOT EXISTS idx_brief_apps_creator ON brief_applications(creator_id);
+CREATE INDEX IF NOT EXISTS idx_ssp_creator ON starter_studio_projects(creator_id);
+
 

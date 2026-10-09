@@ -73,15 +73,21 @@ export function CreatorCard({ creator }) {
           <div className="flex flex-wrap gap-1.5">
             {creator.tools && creator.tools.length > 0 ? (
               creator.tools.slice(0, 4).map(t => (
-                <span key={t.id} className="px-2 py-1 rounded-md text-xs font-medium bg-slate-100 text-indigo-700 border border-slate-200">
+                <Link
+                  key={t.id || t.name}
+                  to={`/tools?search=${encodeURIComponent(t.name)}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 hover:bg-indigo-50 text-indigo-700 hover:text-indigo-900 border border-slate-200 hover:border-indigo-200 transition-colors"
+                  title={`Inspect ${t.name} in directory`}
+                >
                   {t.name}
-                </span>
+                </Link>
               ))
             ) : (
               <span className="text-xs text-slate-400">No tools specified</span>
             )}
             {creator.tools && creator.tools.length > 4 && (
-              <span className="px-2 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200">
+              <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
                 +{creator.tools.length - 4} more
               </span>
             )}

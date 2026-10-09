@@ -1,9 +1,13 @@
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Query
+import uuid
+from fastapi import APIRouter, HTTPException, Query, Depends
 from backend.database import get_db
+from backend.services.auth import require_role
 from backend.schemas import (
     CreatorSummary, CreatorDetail, CreatorListResponse,
-    Tool, Skill, ContentType, PortfolioItem
+    Tool, Skill, ContentType, PortfolioItem,
+    CreatorProfileUpdate, PortfolioItemCreate, PortfolioItemUpdate,
+    StarterStudioProjectCreate, StarterStudioProjectOut
 )
 
 router = APIRouter(prefix="/creators", tags=["creators"])
@@ -14,7 +18,7 @@ def build_creator_dict(row, cursor):
 
     # Fetch Tools
     cursor.execute("""
-        SELECT t.id, t.name, t.category, t.commercial_use, t.url
+        SELECT t.id, t.name, t.category, t.category_name, t.commercial_use, t.url, t.description, t.popular_archetype
         FROM tools t
         JOIN creator_tools ct ON t.id = ct.tool_id
         WHERE ct.creator_id = ?
@@ -238,7 +242,7 @@ def get_creator_detail(creator_id: str):
     for pr in p_rows:
         item_id = pr["id"]
         cursor.execute("""
-            SELECT t.id, t.name, t.category, t.commercial_use, t.url
+            SELECT t.id, t.name, t.category, t.category_name, t.commercial_use, t.url, t.description, t.popular_archetype
             FROM tools t
             JOIN portfolio_item_tools pit ON t.id = pit.tool_id
             WHERE pit.item_id = ?
@@ -271,3 +275,264 @@ def get_creator_detail(creator_id: str):
         **summary.model_dump(),
         portfolio=portfolio_items
     )
+
+# --- Creator Profile & Onboarding Updates ---
+@router.put("/me", response_model=CreatorDetail)
+def update_my_creator_profile(
+    updates: CreatorProfileUpdate,
+    current_user: dict = Depends(require_role("creator"))
+):
+    c_id = current_user.get("creator_id")
+    if not c_id:
+        raise HTTPException(status_code=400, detail="User is not linked to a valid creator record")
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM creators WHERE id = ?", (c_id,))
+    cr_row = cursor.fetchone()
+    if not cr_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Creator record not found")
+
+    # Update basic fields if provided
+    update_fields = []
+    params = []
+
+    if updates.name is not None:
+        update_fields.append("name = ?")
+        params.append(updates.name.strip())
+        cursor.execute("UPDATE users SET display_name = ? WHERE creator_id = ?", (updates.name.strip(), c_id))
+
+    if updates.headline is not None:
+        update_fields.append("headline = ?")
+        params.append(updates.headline.strip())
+
+    if updates.bio is not None:
+        update_fields.append("bio = ?")
+        params.append(updates.bio.strip())
+
+    if updates.specialization is not None:
+        update_fields.append("specialization = ?")
+        params.append(updates.specialization.strip())
+
+    if updates.experience_level is not None:
+        update_fields.append("experience_level = ?")
+        params.append(updates.experience_level.strip())
+
+    if updates.availability is not None:
+        update_fields.append("availability = ?")
+        params.append(updates.availability.strip())
+
+    if updates.rate_min_inr is not None:
+        update_fields.append("rate_min_inr = ?")
+        params.append(updates.rate_min_inr)
+
+    if updates.rate_max_inr is not None:
+        update_fields.append("rate_max_inr = ?")
+        params.append(updates.rate_max_inr)
+
+    if updates.location is not None:
+        update_fields.append("location = ?")
+        params.append(updates.location.strip())
+
+    if updates.languages:
+        update_fields.append("languages = ?")
+        params.append(", ".join(updates.languages))
+
+    if update_fields:
+        query = f"UPDATE creators SET {', '.join(update_fields)} WHERE id = ?"
+        params.append(c_id)
+        cursor.execute(query, params)
+
+    # Sync Tools
+    if updates.tools:
+        cursor.execute("DELETE FROM creator_tools WHERE creator_id = ?", (c_id,))
+        for t_name in updates.tools:
+            cursor.execute("SELECT id FROM tools WHERE name = ? OR CAST(id AS TEXT) = ?", (t_name, t_name))
+            tr = cursor.fetchone()
+            if tr:
+                cursor.execute("INSERT OR IGNORE INTO creator_tools (creator_id, tool_id) VALUES (?, ?)", (c_id, tr["id"]))
+
+    # Sync Skills
+    if updates.skills:
+        cursor.execute("DELETE FROM creator_skills WHERE creator_id = ?", (c_id,))
+        for s_name in updates.skills:
+            cursor.execute("SELECT id FROM skills WHERE name = ? OR CAST(id AS TEXT) = ?", (s_name, s_name))
+            sr = cursor.fetchone()
+            if sr:
+                cursor.execute("INSERT OR IGNORE INTO creator_skills (creator_id, skill_id) VALUES (?, ?)", (c_id, sr["id"]))
+
+    # Sync Content Types
+    if updates.content_types:
+        cursor.execute("DELETE FROM creator_content_types WHERE creator_id = ?", (c_id,))
+        for ct_name in updates.content_types:
+            cursor.execute("SELECT id FROM content_types WHERE name = ? OR CAST(id AS TEXT) = ?", (ct_name, ct_name))
+            ctr = cursor.fetchone()
+            if ctr:
+                cursor.execute("INSERT OR IGNORE INTO creator_content_types (creator_id, content_type_id) VALUES (?, ?)", (c_id, ctr["id"]))
+
+    conn.commit()
+    conn.close()
+
+    return get_creator_detail(c_id)
+
+# --- Creator Portfolio Management (CRUD) ---
+@router.post("/me/portfolio", response_model=PortfolioItem, status_code=201)
+def add_portfolio_item(
+    item: PortfolioItemCreate,
+    current_user: dict = Depends(require_role("creator"))
+):
+    c_id = current_user.get("creator_id")
+    if not c_id:
+        raise HTTPException(status_code=400, detail="User is not linked to a valid creator record")
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    pf_id = f"pf_{uuid.uuid4().hex[:8]}"
+
+    # Default fallback thumbnail if missing
+    thumb = item.thumbnail_url or item.media_url or f"https://picsum.photos/seed/{pf_id}/600/400"
+
+    cursor.execute("""
+        INSERT INTO portfolio_items (
+            id, creator_id, title, media_type, content_type_id, media_url,
+            thumbnail_url, duration_sec, aspect_ratio, workflow, process_notes,
+            client_name, commercial_use, year
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        pf_id, c_id, item.title, item.media_type, item.content_type_id,
+        item.media_url or thumb, thumb, item.duration_sec, item.aspect_ratio,
+        item.workflow, item.process_notes, item.client_name, item.commercial_use, item.year
+    ))
+
+    # Insert associated tools
+    for tid in item.tool_ids:
+        cursor.execute("INSERT OR IGNORE INTO portfolio_item_tools (item_id, tool_id) VALUES (?, ?)", (pf_id, tid))
+
+    # Mark workflow_documented if workflow present
+    if item.workflow and len(item.workflow) > 10:
+        cursor.execute("UPDATE creators SET workflow_documented = 1, past_work_linked = 1 WHERE id = ?", (c_id,))
+
+    conn.commit()
+    conn.close()
+
+    # Return full updated detail
+    detail = get_creator_detail(c_id)
+    added = next((p for p in detail.portfolio if p.id == pf_id), None)
+    if not added:
+        raise HTTPException(status_code=500, detail="Failed to retrieve newly created portfolio item")
+    return added
+
+@router.put("/me/portfolio/{item_id}", response_model=PortfolioItem)
+def update_portfolio_item(
+    item_id: str,
+    updates: PortfolioItemUpdate,
+    current_user: dict = Depends(require_role("creator"))
+):
+    c_id = current_user.get("creator_id")
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM portfolio_items WHERE id = ? AND creator_id = ?", (item_id, c_id))
+    existing = cursor.fetchone()
+    if not existing:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Portfolio item not found or unauthorized")
+
+    fields = []
+    params = []
+
+    for key, val in updates.model_dump(exclude_unset=True).items():
+        if key == "tool_ids":
+            continue
+        if val is not None:
+            fields.append(f"{key} = ?")
+            params.append(val)
+
+    if fields:
+        params.append(item_id)
+        cursor.execute(f"UPDATE portfolio_items SET {', '.join(fields)} WHERE id = ?", params)
+
+    if updates.tool_ids is not None:
+        cursor.execute("DELETE FROM portfolio_item_tools WHERE item_id = ?", (item_id,))
+        for tid in updates.tool_ids:
+            cursor.execute("INSERT OR IGNORE INTO portfolio_item_tools (item_id, tool_id) VALUES (?, ?)", (item_id, tid))
+
+    conn.commit()
+    conn.close()
+
+    detail = get_creator_detail(c_id)
+    updated = next((p for p in detail.portfolio if p.id == item_id), None)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Portfolio item missing after update")
+    return updated
+
+@router.delete("/me/portfolio/{item_id}")
+def delete_portfolio_item(
+    item_id: str,
+    current_user: dict = Depends(require_role("creator"))
+):
+    c_id = current_user.get("creator_id")
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM portfolio_items WHERE id = ? AND creator_id = ?", (item_id, c_id))
+    existing = cursor.fetchone()
+    if not existing:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Portfolio item not found or unauthorized")
+
+    cursor.execute("DELETE FROM portfolio_items WHERE id = ?", (item_id,))
+    conn.commit()
+    conn.close()
+    return {"status": "ok", "message": f"Portfolio item '{item_id}' deleted successfully"}
+
+# --- Starter Studio Saved Projects ---
+@router.get("/me/studio-projects", response_model=List[StarterStudioProjectOut])
+def get_my_studio_projects(current_user: dict = Depends(require_role("creator"))):
+    c_id = current_user.get("creator_id")
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM starter_studio_projects WHERE creator_id = ? ORDER BY created_at DESC", (c_id,))
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [StarterStudioProjectOut(**dict(r)) for r in rows]
+
+@router.post("/me/studio-projects", response_model=StarterStudioProjectOut, status_code=201)
+def save_studio_project(
+    req: StarterStudioProjectCreate,
+    current_user: dict = Depends(require_role("creator"))
+):
+    c_id = current_user.get("creator_id")
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Check if project already exists for this creator & title
+    cursor.execute("SELECT * FROM starter_studio_projects WHERE creator_id = ? AND title = ?", (c_id, req.title))
+    existing = cursor.fetchone()
+
+    if existing:
+        new_status = "completed" if existing["status"] == "in_progress" else "in_progress"
+        cursor.execute("UPDATE starter_studio_projects SET status = ?, notes = ? WHERE id = ?", (new_status, req.notes or existing["notes"], existing["id"]))
+        conn.commit()
+        cursor.execute("SELECT * FROM starter_studio_projects WHERE id = ?", (existing["id"],))
+        updated = cursor.fetchone()
+        conn.close()
+        return StarterStudioProjectOut(**dict(updated))
+
+    ssp_id = f"ssp_{uuid.uuid4().hex[:8]}"
+    cursor.execute("""
+        INSERT INTO starter_studio_projects (id, creator_id, title, project_type, status, notes)
+        VALUES (?, ?, ?, ?, 'in_progress', ?)
+    """, (ssp_id, c_id, req.title, req.project_type, req.notes or ""))
+
+    conn.commit()
+    cursor.execute("SELECT * FROM starter_studio_projects WHERE id = ?", (ssp_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return StarterStudioProjectOut(**dict(row))
+

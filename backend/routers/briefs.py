@@ -5,11 +5,12 @@ from backend.database import get_db
 from backend.schemas import (
     BriefSummary, BriefDetail, BriefCreate,
     BriefDraftRequest, BriefDraftResponse,
-    CreatorMatch, Tool, Skill
+    CreatorMatch, Tool, Skill,
+    BriefApplicationCreate, BriefApplicationOut, BriefApplicationUpdate, DeliverySubmit
 )
 from backend.services.brief_ai import generate_brief_draft
 from backend.services.matcher import compute_creator_match
-from backend.services.auth import require_role
+from backend.services.auth import require_role, get_current_user
 from backend.routers.creators import build_creator_dict
 
 router = APIRouter(prefix="/briefs", tags=["briefs"])
@@ -28,7 +29,7 @@ def fetch_brief_detail_by_id(brief_id: str, cursor) -> BriefDetail:
 
     # Fetch required tools
     cursor.execute("""
-        SELECT t.id, t.name, t.category, t.commercial_use, t.url
+        SELECT t.id, t.name, t.category, t.category_name, t.commercial_use, t.url, t.description, t.popular_archetype
         FROM tools t
         JOIN brief_required_tools brt ON t.id = brt.tool_id
         WHERE brt.brief_id = ?
@@ -214,3 +215,201 @@ def get_brief_matches(brief_id: str):
     # Sort matches by score descending
     matches.sort(key=lambda m: m.match_score, reverse=True)
     return matches
+
+# --- Engagement Workflow (Applications, Shortlisting, Deliveries) ---
+@router.post("/{brief_id}/apply", response_model=BriefApplicationOut, status_code=201)
+def apply_to_brief(
+    brief_id: str,
+    req: BriefApplicationCreate,
+    current_user: dict = Depends(require_role("creator"))
+):
+    c_id = current_user.get("creator_id")
+    if not c_id:
+        raise HTTPException(status_code=400, detail="User is not linked to a valid creator profile")
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Check brief exists and is open
+    cursor.execute("SELECT * FROM briefs WHERE id = ?", (brief_id,))
+    brief_row = cursor.fetchone()
+    if not brief_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Brief not found")
+
+    # Check if already applied
+    cursor.execute("SELECT * FROM brief_applications WHERE brief_id = ? AND creator_id = ?", (brief_id, c_id))
+    existing = cursor.fetchone()
+    if existing:
+        conn.close()
+        raise HTTPException(status_code=400, detail="You have already submitted an application for this brief.")
+
+    app_id = f"app_{uuid.uuid4().hex[:8]}"
+
+    cursor.execute("""
+        INSERT INTO brief_applications (
+            id, brief_id, creator_id, pitch, proposed_rate_inr, estimated_days,
+            status, payment_status
+        ) VALUES (?, ?, ?, ?, ?, ?, 'applied', 'escrow_pending')
+    """, (app_id, brief_id, c_id, req.pitch, req.proposed_rate_inr, req.estimated_days))
+
+    conn.commit()
+
+    cursor.execute("""
+        SELECT ba.*, b.title as brief_title, c.name as creator_name, c.avatar_url as creator_avatar, c.headline as creator_headline
+        FROM brief_applications ba
+        JOIN briefs b ON ba.brief_id = b.id
+        JOIN creators c ON ba.creator_id = c.id
+        WHERE ba.id = ?
+    """, (app_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return BriefApplicationOut(**dict(row))
+
+@router.get("/{brief_id}/applications", response_model=List[BriefApplicationOut])
+def get_brief_applications(
+    brief_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM briefs WHERE id = ?", (brief_id,))
+    b_row = cursor.fetchone()
+    if not b_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Brief not found")
+
+    # Access check: brand owner or creator viewing their own
+    if current_user["role"] == "brand" and current_user.get("brand_id") != b_row["brand_id"]:
+        conn.close()
+        raise HTTPException(status_code=403, detail="Not authorized to view applicants for this brief")
+
+    query = """
+        SELECT ba.*, b.title as brief_title, c.name as creator_name, c.avatar_url as creator_avatar, c.headline as creator_headline
+        FROM brief_applications ba
+        JOIN briefs b ON ba.brief_id = b.id
+        JOIN creators c ON ba.creator_id = c.id
+        WHERE ba.brief_id = ?
+    """
+    params = [brief_id]
+
+    if current_user["role"] == "creator":
+        query += " AND ba.creator_id = ?"
+        params.append(current_user.get("creator_id"))
+
+    query += " ORDER BY ba.created_at DESC"
+
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    return [BriefApplicationOut(**dict(r)) for r in rows]
+
+@router.get("/applications/my", response_model=List[BriefApplicationOut])
+def get_my_applications(current_user: dict = Depends(require_role("creator"))):
+    c_id = current_user.get("creator_id")
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT ba.*, b.title as brief_title, c.name as creator_name, c.avatar_url as creator_avatar, c.headline as creator_headline
+        FROM brief_applications ba
+        JOIN briefs b ON ba.brief_id = b.id
+        JOIN creators c ON ba.creator_id = c.id
+        WHERE ba.creator_id = ?
+        ORDER BY ba.created_at DESC
+    """, (c_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [BriefApplicationOut(**dict(r)) for r in rows]
+
+@router.put("/applications/{application_id}", response_model=BriefApplicationOut)
+def update_application_status(
+    application_id: str,
+    updates: BriefApplicationUpdate,
+    current_user: dict = Depends(require_role("brand"))
+):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT ba.*, b.brand_id FROM brief_applications ba
+        JOIN briefs b ON ba.brief_id = b.id
+        WHERE ba.id = ?
+    """, (application_id,))
+    app_row = cursor.fetchone()
+
+    if not app_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    if app_row["brand_id"] != current_user.get("brand_id"):
+        conn.close()
+        raise HTTPException(status_code=403, detail="Not authorized to manage this application")
+
+    new_status = updates.status or app_row["status"]
+    payment = app_row["payment_status"]
+
+    if new_status in ["accepted", "in_progress"]:
+        payment = "escrow_held"
+    elif new_status == "completed":
+        payment = "payment_released"
+
+    fields = ["status = ?", "payment_status = ?", "updated_at = CURRENT_TIMESTAMP"]
+    params = [new_status, payment]
+
+    if updates.revision_feedback is not None:
+        fields.append("revision_feedback = ?")
+        params.append(updates.revision_feedback.strip())
+
+    params.append(application_id)
+    cursor.execute(f"UPDATE brief_applications SET {', '.join(fields)} WHERE id = ?", params)
+    conn.commit()
+
+    cursor.execute("""
+        SELECT ba.*, b.title as brief_title, c.name as creator_name, c.avatar_url as creator_avatar, c.headline as creator_headline
+        FROM brief_applications ba
+        JOIN briefs b ON ba.brief_id = b.id
+        JOIN creators c ON ba.creator_id = c.id
+        WHERE ba.id = ?
+    """, (application_id,))
+    updated_row = cursor.fetchone()
+    conn.close()
+    return BriefApplicationOut(**dict(updated_row))
+
+@router.post("/applications/{application_id}/deliver", response_model=BriefApplicationOut)
+def submit_delivery(
+    application_id: str,
+    delivery: DeliverySubmit,
+    current_user: dict = Depends(require_role("creator"))
+):
+    c_id = current_user.get("creator_id")
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM brief_applications WHERE id = ? AND creator_id = ?", (application_id, c_id))
+    app_row = cursor.fetchone()
+
+    if not app_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Application not found or unauthorized")
+
+    cursor.execute("""
+        UPDATE brief_applications
+        SET delivery_url = ?, delivery_notes = ?, status = 'delivered', updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, (delivery.delivery_url.strip(), delivery.delivery_notes, application_id))
+
+    conn.commit()
+
+    cursor.execute("""
+        SELECT ba.*, b.title as brief_title, c.name as creator_name, c.avatar_url as creator_avatar, c.headline as creator_headline
+        FROM brief_applications ba
+        JOIN briefs b ON ba.brief_id = b.id
+        JOIN creators c ON ba.creator_id = c.id
+        WHERE ba.id = ?
+    """, (application_id,))
+    updated_row = cursor.fetchone()
+    conn.close()
+    return BriefApplicationOut(**dict(updated_row))
+

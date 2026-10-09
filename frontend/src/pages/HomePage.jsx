@@ -56,12 +56,72 @@ export function HomePage() {
             <div className="text-xs text-slate-500 font-semibold uppercase mt-1">Portfolio Items</div>
           </div>
           <div>
-            <div className="text-3xl font-extrabold text-indigo-600">18+</div>
-            <div className="text-xs text-slate-500 font-semibold uppercase mt-1">GenAI Tools Tracked</div>
+            <div className="text-3xl font-extrabold text-indigo-600">250+</div>
+            <div className="text-xs text-slate-500 font-semibold uppercase mt-1">AI Tools Tracked (18 Categories)</div>
           </div>
           <div>
             <div className="text-3xl font-extrabold text-indigo-600">100%</div>
-            <div className="text-xs text-slate-500 font-semibold uppercase mt-1">Clearance Guarantee</div>
+            <div className="text-xs text-slate-500 font-semibold uppercase mt-1">Commercial Clearance</div>
+          </div>
+        </div>
+      </section>
+
+      {/* AI Tools & Kampus.VC Archetypes Showcase */}
+      <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-950 rounded-3xl p-8 sm:p-12 text-white relative overflow-hidden shadow-xl border border-indigo-500/20">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="max-w-3xl mb-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-indigo-300 text-xs font-semibold mb-4 backdrop-blur-xs border border-white/10">
+              <Sparkles className="w-3.5 h-3.5" />
+              Comprehensive AI Creator Toolkit • Kampus.VC Research
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4 text-white">
+              Discover 250+ AI Tools across 18 Creator Disciplines
+            </h2>
+            <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
+              Explore generative video suites, neural voice cloners, AI avatar studios, and automated repurposing tools. Built for brand marketers and creative directors sourcing specialists on Kampus.VC.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-8">
+            {[
+              { name: 'AI Video Creator', icon: '🎬', tools: 'Runway, Kling, Veo, Pika' },
+              { name: 'AI Graphic Designer', icon: '🎨', tools: 'Midjourney, Ideogram, Canva' },
+              { name: 'AI Script Writer', icon: '✍️', tools: 'ChatGPT, Claude, Jasper' },
+              { name: 'AI Voice Artist', icon: '🎙️', tools: 'ElevenLabs, Murf, PlayHT' },
+              { name: 'AI Music Producer', icon: '🎵', tools: 'Suno, Udio, AIVA' },
+              { name: 'AI Influencer Creator', icon: '🤖', tools: 'HeyGen, Hedra, Synthesia' },
+              { name: 'UGC Ad Creator', icon: '📣', tools: 'Creatify, Arcads, JoggAI' },
+              { name: 'Social Media Manager', icon: '📱', tools: 'Buffer, Predis.ai, Metricool' },
+              { name: 'AI Repurposing Expert', icon: '♻️', tools: 'CapCut, Descript, OpusClip' },
+              { name: 'AI Marketing Strategist', icon: '📈', tools: 'Semrush, Surfer, BuzzSumo' }
+            ].map(arch => (
+              <Link
+                key={arch.name}
+                to={`/creators?specialization=${encodeURIComponent(arch.name)}`}
+                className="p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all hover:scale-102 flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="text-2xl mb-1.5">{arch.icon}</div>
+                  <div className="text-xs font-bold text-white group-hover:text-indigo-300 transition-colors">{arch.name}</div>
+                </div>
+                <div className="text-[10px] text-slate-400 mt-2 line-clamp-1">{arch.tools}</div>
+              </Link>
+            ))}
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/10">
+            <div className="text-xs text-slate-400">
+              Benchmark standards aligned with <span className="text-slate-200">Buffer</span>, <span className="text-slate-200">VEED.io</span>, <span className="text-slate-200">Collabstr</span>, <span className="text-slate-200">CreatorIQ</span> & <span className="text-slate-200">Upfluence</span>.
+            </div>
+            <Link
+              to="/tools"
+              className="px-6 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md shrink-0"
+            >
+              Explore 250+ Tools Directory
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       </section>
@@ -83,7 +143,7 @@ export function HomePage() {
             </div>
             <h3 className="text-lg font-bold text-slate-900 mb-2">Verified AI Tool Stacks</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Every creator's toolset (Midjourney, Runway, Sora, ComfyUI, ElevenLabs) is documented with full process notes and commercial licence status.
+              Every creator's toolset (Midjourney, Runway, Sora, ComfyUI, ElevenLabs, Kling) is documented with full process notes and commercial licence status.
             </p>
           </div>
 
@@ -93,7 +153,7 @@ export function HomePage() {
             </div>
             <h3 className="text-lg font-bold text-slate-900 mb-2">Automated Match Scoring</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Our 0-100 match algorithm evaluates tool overlap, skill requirements, budget alignment, and verification signals for every campaign brief.
+              Our 0-100 match algorithm evaluates tool overlap across 250+ tools, skill requirements, budget alignment, and verification signals for every campaign brief.
             </p>
           </div>
 

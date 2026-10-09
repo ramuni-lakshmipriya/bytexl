@@ -1,14 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Cpu, Sparkles, CheckCircle2, Award } from 'lucide-react';
-import { fetchBriefById, fetchBriefMatches } from '../api';
+import { ArrowLeft, Cpu, Sparkles, CheckCircle2, Award, Send, Loader2, X, DollarSign } from 'lucide-react';
+import { fetchBriefById, fetchBriefMatches, applyToBrief } from '../api';
+import { useAuth } from '../context/AuthContext';
 
 export function BriefDetailPage() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [brief, setBrief] = useState(null);
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Apply Modal state
+  const [isApplyOpen, setIsApplyOpen] = useState(false);
+  const [pitch, setPitch] = useState('');
+  const [proposedRate, setProposedRate] = useState(25000);
+  const [estimatedDays, setEstimatedDays] = useState(5);
+  const [submittingApp, setSubmittingApp] = useState(false);
+  const [appSuccess, setAppSuccess] = useState(null);
+  const [appError, setAppError] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -16,6 +27,9 @@ export function BriefDetailPage() {
       .then(([briefData, matchesData]) => {
         setBrief(briefData);
         setMatches(matchesData);
+        if (briefData.budget_min_inr) {
+          setProposedRate(briefData.budget_min_inr);
+        }
         setLoading(false);
       })
       .catch(err => {
@@ -23,6 +37,29 @@ export function BriefDetailPage() {
         setLoading(false);
       });
   }, [id]);
+
+  const handleApplySubmit = async (e) => {
+    e.preventDefault();
+    setSubmittingApp(true);
+    setAppError(null);
+
+    try {
+      await applyToBrief(id, {
+        pitch: pitch.trim(),
+        proposed_rate_inr: parseInt(proposedRate) || 10000,
+        estimated_days: parseInt(estimatedDays) || 3
+      });
+      setAppSuccess('Your application has been submitted successfully to the brand!');
+      setTimeout(() => {
+        setIsApplyOpen(false);
+        setAppSuccess(null);
+      }, 1200);
+    } catch (err) {
+      setAppError(err.message || 'Failed to submit application.');
+    } finally {
+      setSubmittingApp(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -90,6 +127,15 @@ export function BriefDetailPage() {
             <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
               Status: {brief.status}
             </span>
+
+            {user?.role === 'creator' && (
+              <button
+                onClick={() => setIsApplyOpen(true)}
+                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md shadow-purple-600/20 flex items-center gap-2 transition-all hover:scale-105"
+              >
+                <Send className="w-4 h-4" /> Apply to Brief
+              </button>
+            )}
           </div>
         </div>
 
@@ -145,9 +191,14 @@ export function BriefDetailPage() {
             <div className="flex flex-wrap gap-1.5">
               {brief.required_tools && brief.required_tools.length > 0 ? (
                 brief.required_tools.map(t => (
-                  <span key={t.id} className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-indigo-700 border border-slate-200">
+                  <Link
+                    key={t.id}
+                    to={`/tools?search=${encodeURIComponent(t.name)}`}
+                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 hover:bg-indigo-50 text-indigo-700 hover:text-indigo-900 border border-slate-200 hover:border-indigo-200 transition-colors"
+                    title={`Inspect ${t.name} in directory`}
+                  >
                     {t.name}
-                  </span>
+                  </Link>
                 ))
               ) : (
                 <span className="text-xs text-slate-400 italic">No specific tool required</span>
@@ -259,6 +310,95 @@ export function BriefDetailPage() {
 
       </section>
 
+      {/* Apply to Brief Modal */}
+      {isApplyOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 border border-slate-200 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-lg font-bold text-slate-900">Apply for: {brief.title}</h3>
+              <button onClick={() => setIsApplyOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {appSuccess && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                {appSuccess}
+              </div>
+            )}
+
+            {appError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-medium">
+                {appError}
+              </div>
+            )}
+
+            <form onSubmit={handleApplySubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Pitch / Creative Approach *</label>
+                <textarea
+                  rows="4"
+                  required
+                  value={pitch}
+                  onChange={(e) => setPitch(e.target.value)}
+                  placeholder="Explain how your AI pipeline, visual style, and models fit this brand's campaign vision..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-purple-600"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Proposed Project Rate (₹ INR)</label>
+                  <input
+                    type="number"
+                    required
+                    value={proposedRate}
+                    onChange={(e) => setProposedRate(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Estimated Days to Deliver</label>
+                  <input
+                    type="number"
+                    required
+                    value={estimatedDays}
+                    onChange={(e) => setEstimatedDays(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-purple-50 rounded-xl border border-purple-100 text-purple-900 text-[11px]">
+                🛡️ <strong>Simulated Escrow:</strong> Payment will be held in escrow upon acceptance and released when the brand approves final delivery.
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsApplyOpen(false)}
+                  className="px-4 py-2 text-slate-500 font-semibold"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={submittingApp}
+                  className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold shadow-md flex items-center gap-2"
+                >
+                  {submittingApp ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit Pitch Application'}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
+

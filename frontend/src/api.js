@@ -108,3 +108,75 @@ export async function logoutApi() {
 export async function fetchDashboard() {
   return request('/dashboard');
 }
+
+// --- Creator Profile & Onboarding ---
+export async function updateCreatorProfile(data) {
+  return request('/creators/me', {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  });
+}
+
+// --- Creator Portfolio CRUD ---
+export async function addPortfolioItem(data) {
+  return request('/creators/me/portfolio', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+export async function updatePortfolioItem(itemId, data) {
+  return request(`/creators/me/portfolio/${itemId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  });
+}
+
+export async function deletePortfolioItem(itemId) {
+  return request(`/creators/me/portfolio/${itemId}`, {
+    method: 'DELETE'
+  });
+}
+
+// --- Starter Studio ---
+export async function fetchStudioProjects() {
+  return request('/creators/me/studio-projects');
+}
+
+export async function saveStudioProject(data) {
+  return request('/creators/me/studio-projects', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+// --- Engagement Workflow ---
+export async function applyToBrief(briefId, data) {
+  return request(`/briefs/${briefId}/apply`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+export async function fetchBriefApplications(briefId) {
+  return request(`/briefs/${briefId}/applications`);
+}
+
+export async function fetchMyApplications() {
+  return request('/briefs/applications/my');
+}
+
+export async function updateApplicationStatus(appId, data) {
+  return request(`/briefs/applications/${appId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  });
+}
+
+export async function submitDelivery(appId, data) {
+  return request(`/briefs/applications/${appId}/deliver`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+

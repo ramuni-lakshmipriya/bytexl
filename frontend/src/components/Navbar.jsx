@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Sparkles, Users, Briefcase, PlusCircle, LayoutDashboard, LogOut, LogIn, UserPlus, Zap, ChevronDown, UserCheck, Building2 } from 'lucide-react';
+import { Sparkles, Users, Briefcase, PlusCircle, LayoutDashboard, LogOut, LogIn, UserPlus, Zap, ChevronDown, UserCheck, Building2, Compass } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export function Navbar() {
@@ -75,6 +75,7 @@ export function Navbar() {
             <div>
               <span className="font-bold text-lg text-slate-900 tracking-tight">GenCraft</span>
               <span className="text-xs px-1.5 py-0.5 ml-1.5 rounded bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200">AI</span>
+              <span className="hidden sm:inline-block text-[10px] text-slate-400 font-semibold ml-1.5">x Kampus.VC</span>
             </div>
           </Link>
 
@@ -90,6 +91,21 @@ export function Navbar() {
             >
               <Users className="w-4 h-4" />
               Find Creators
+            </Link>
+
+            <Link
+              to="/tools"
+              className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                isActive('/tools')
+                  ? 'bg-indigo-50 text-indigo-600 border border-indigo-200 font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <Compass className="w-4 h-4 text-indigo-600" />
+              AI Tools Directory
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 font-bold border border-indigo-200">
+                250+
+              </span>
             </Link>
 
             <Link
