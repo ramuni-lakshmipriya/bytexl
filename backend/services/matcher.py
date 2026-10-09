@@ -25,10 +25,17 @@ Weights & Formula Breakdown (Total 100 Points):
 from typing import Dict, Any, List
 from backend.database import get_db
 
+def extract_id(item: Any) -> Any:
+    if isinstance(item, dict):
+        return item.get("id")
+    if isinstance(item, (int, str)):
+        return item
+    return getattr(item, "id", item)
+
 def compute_creator_match(creator: Dict[str, Any], brief: Dict[str, Any]) -> Dict[str, Any]:
     # 1. Required Tools Match (30 pts)
-    req_tool_ids = set(brief.get("required_tool_ids", []))
-    creator_tool_ids = set(t["id"] for t in creator.get("tools", []))
+    req_tool_ids = set(extract_id(t) for t in brief.get("required_tool_ids", []) if extract_id(t) is not None)
+    creator_tool_ids = set(extract_id(t) for t in creator.get("tools", []) if extract_id(t) is not None)
     
     if not req_tool_ids:
         tool_score = 30.0
@@ -39,8 +46,8 @@ def compute_creator_match(creator: Dict[str, Any], brief: Dict[str, Any]) -> Dic
         tool_score = (tool_match_count / len(req_tool_ids)) * 30.0
 
     # 2. Required Skills Match (30 pts)
-    req_skill_ids = set(brief.get("required_skill_ids", []))
-    creator_skill_ids = set(s["id"] for s in creator.get("skills", []))
+    req_skill_ids = set(extract_id(s) for s in brief.get("required_skill_ids", []) if extract_id(s) is not None)
+    creator_skill_ids = set(extract_id(s) for s in creator.get("skills", []) if extract_id(s) is not None)
     
     if not req_skill_ids:
         skill_score = 30.0
