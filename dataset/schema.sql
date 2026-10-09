@@ -5,7 +5,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE tools (
     id               INTEGER PRIMARY KEY,
     name             TEXT NOT NULL UNIQUE,
-    category         TEXT NOT NULL CHECK (category IN ('video','image','audio','editing','3d','avatar')),
+    category         TEXT NOT NULL,
     commercial_use   TEXT NOT NULL CHECK (commercial_use IN ('yes','plan_dependent')),
     url              TEXT
 );
