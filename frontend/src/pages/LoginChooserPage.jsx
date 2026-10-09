@@ -25,7 +25,7 @@ export function LoginChooserPage() {
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold">
           <Sparkles className="w-4 h-4 text-indigo-600" />
-          Welcome to GenCraft AI Marketplace
+          Welcome to Vyntrav AI Marketplace
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
           Choose Account Type

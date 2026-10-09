@@ -69,11 +69,13 @@ export function Navbar() {
           
           {/* Brand Logo */}
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
+            <img
+              src="/logo.png"
+              alt="Vyntrav"
+              className="w-10 h-10 rounded-xl object-contain bg-black p-1 border border-slate-800 shadow-md group-hover:scale-105 transition-transform"
+            />
             <div>
-              <span className="font-bold text-lg text-slate-900 tracking-tight">GenCraft</span>
+              <span className="font-extrabold text-xl text-slate-900 tracking-tight">Vyntrav</span>
               <span className="text-xs px-1.5 py-0.5 ml-1.5 rounded bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200">AI</span>
               <span className="hidden sm:inline-block text-[10px] text-slate-400 font-semibold ml-1.5">x Kampus.VC</span>
             </div>
