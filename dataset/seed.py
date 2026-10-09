@@ -324,6 +324,43 @@ def build_db(db_path: str) -> None:
         for s in skills:
             cur.execute("INSERT INTO brief_required_skills VALUES (?,?)", (bfid, skill_id[s]))
 
+    # --- users (demo users & creator/brand user accounts)
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    cr_pass_hash = pwd_context.hash("DemoCreator123!")
+    br_pass_hash = pwd_context.hash("DemoBrand123!")
+    default_pass_hash = pwd_context.hash("Password123!")
+
+    # 1. Demo Creator
+    cur.execute("""
+        INSERT INTO users (id, email, password_hash, role, creator_id, brand_id, display_name, avatar_url)
+        VALUES (?, ?, ?, 'creator', 'cr_001', NULL, ?, ?)
+    """, ("usr_demo_cr", "demo.creator@gencraft.demo", cr_pass_hash, "Ananya Rao (Demo Creator)", "https://picsum.photos/seed/cr_001/200"))
+
+    # 2. Demo Brand
+    cur.execute("""
+        INSERT INTO users (id, email, password_hash, role, creator_id, brand_id, display_name, avatar_url)
+        VALUES (?, ?, ?, 'brand', NULL, 'br_01', ?, ?)
+    """, ("usr_demo_br", "demo.brand@gencraft.demo", br_pass_hash, "Lotus & Loom (Demo Brand)", "https://api.dicebear.com/7.x/initials/svg?seed=LotusLoom"))
+
+    # 3. Seed users for remaining creators
+    for i, cr_data in enumerate(CREATORS[1:], start=2):
+        cid = f"cr_{i:03d}"
+        c_name = cr_data[0]
+        c_email = f"{c_name.lower().replace(' ', '.')}@creators.gencraft.demo"
+        cur.execute("""
+            INSERT INTO users (id, email, password_hash, role, creator_id, brand_id, display_name, avatar_url)
+            VALUES (?, ?, ?, 'creator', ?, NULL, ?, ?)
+        """, (f"usr_cr_{i:03d}", c_email, default_pass_hash, cid, c_name, f"https://picsum.photos/seed/{cid}/200"))
+
+    # 4. Seed users for remaining brands
+    for bid, b_name, industry, desc, is_agency in BRANDS[1:]:
+        b_email = f"contact@{b_name.lower().replace(' ', '').replace('&', 'and')}.demo"
+        cur.execute("""
+            INSERT INTO users (id, email, password_hash, role, creator_id, brand_id, display_name, avatar_url)
+            VALUES (?, ?, ?, 'brand', NULL, ?, ?, ?)
+        """, (f"usr_{bid}", b_email, default_pass_hash, bid, b_name, f"https://api.dicebear.com/7.x/initials/svg?seed={b_name.replace(' ', '')}"))
+
     conn.commit()
     conn.close()
 
@@ -333,7 +370,7 @@ def report(db_path: str) -> None:
     q = lambda sql, *a: conn.execute(sql, a).fetchall()
 
     print(f"Seeded {db_path}")
-    for table in ("tools", "skills", "content_types", "creators", "portfolio_items", "brands", "briefs"):
+    for table in ("tools", "skills", "content_types", "creators", "portfolio_items", "brands", "briefs", "users", "oauth_accounts"):
         print(f"  {table:<16} {q(f'SELECT COUNT(*) FROM {table}')[0][0]}")
 
     bad = q("PRAGMA foreign_key_check")

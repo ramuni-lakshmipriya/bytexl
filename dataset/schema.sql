@@ -125,10 +125,38 @@ CREATE TABLE brief_required_skills (
     PRIMARY KEY (brief_id, skill_id)
 );
 
--- ---------- Indexes for search / filter ----------
+-- ---------- Authentication & Users ----------
+CREATE TABLE users (
+    id            TEXT PRIMARY KEY,                  -- e.g. usr_001
+    email         TEXT UNIQUE NOT NULL,
+    password_hash TEXT,                              -- bcrypt hash or NULL for OAuth
+    role          TEXT NOT NULL CHECK (role IN ('creator','brand')),
+    creator_id    TEXT REFERENCES creators(id) ON DELETE SET NULL,
+    brand_id      TEXT REFERENCES brands(id) ON DELETE SET NULL,
+    display_name  TEXT,
+    avatar_url    TEXT,
+    created_at    TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE oauth_accounts (
+    id               TEXT PRIMARY KEY,               -- e.g. oa_001
+    user_id          TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider         TEXT NOT NULL,                  -- 'google', 'facebook', 'instagram'
+    provider_user_id TEXT NOT NULL,
+    email            TEXT,
+    created_at       TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(provider, provider_user_id)
+);
+
+-- ---------- Indexes for search / filter / auth ----------
 CREATE INDEX idx_creator_tools_tool     ON creator_tools(tool_id);
 CREATE INDEX idx_creator_skills_skill   ON creator_skills(skill_id);
 CREATE INDEX idx_creator_ct_ct          ON creator_content_types(content_type_id);
 CREATE INDEX idx_creators_spec          ON creators(specialization);
 CREATE INDEX idx_portfolio_creator      ON portfolio_items(creator_id);
 CREATE INDEX idx_briefs_status          ON briefs(status);
+CREATE INDEX idx_users_email            ON users(email);
+CREATE INDEX idx_users_creator          ON users(creator_id);
+CREATE INDEX idx_users_brand            ON users(brand_id);
+CREATE INDEX idx_oauth_user             ON oauth_accounts(user_id);
+
